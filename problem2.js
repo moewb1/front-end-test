@@ -85,95 +85,43 @@ function parseBossResults(csvSource) {
   return records;
 }
 
-function conditionalProbability(matchCount, classCount, possibleValuesCount) {
-  return (matchCount + 1) / (classCount + possibleValuesCount);
-}
-
-function countPossibleValues(records) {
-  const suits = new Set();
-  const companions = new Set();
-  const fruits = new Set();
+function winRateForValue(records, fieldName, targetValue) {
+  let totalMatches = 0;
+  let wins = 0;
 
   for (let i = 0; i < records.length; i++) {
-    suits.add(records[i].suit);
-    companions.add(records[i].companion);
-    fruits.add(records[i].fruit);
+    if (records[i][fieldName] === targetValue) {
+      totalMatches++;
+
+      if (records[i].won) {
+        wins++;
+      }
+    }
   }
 
-  return {
-    suitCount: suits.size,
-    companionCount: companions.size,
-    fruitCount: fruits.size
-  };
+  if (totalMatches === 0) {
+    return 0;
+  }
+
+  return wins / totalMatches;
 }
 
 function probabilityToBeatBoss(suit, companion, fruit, csvSource = getDefaultCsvSource()) {
   const records = parseBossResults(csvSource);
   if (records.length === 0) {
-    return "0.0%";
+    return 0;
   }
 
   const targetSuit = normalize(suit);
   const targetCompanion = normalize(companion);
   const targetFruit = normalize(fruit);
 
-  let wins = 0;
-  let losses = 0;
+  const suitRate = winRateForValue(records, "suit", targetSuit);
+  const companionRate = winRateForValue(records, "companion", targetCompanion);
+  const fruitRate = winRateForValue(records, "fruit", targetFruit);
 
-  let suitWins = 0;
-  let suitLosses = 0;
-  let companionWins = 0;
-  let companionLosses = 0;
-  let fruitWins = 0;
-  let fruitLosses = 0;
-
-  for (let i = 0; i < records.length; i++) {
-    const record = records[i];
-
-    if (record.won) {
-      wins++;
-      if (record.suit === targetSuit) {
-        suitWins++;
-      }
-      if (record.companion === targetCompanion) {
-        companionWins++;
-      }
-      if (record.fruit === targetFruit) {
-        fruitWins++;
-      }
-    } else {
-      losses++;
-      if (record.suit === targetSuit) {
-        suitLosses++;
-      }
-      if (record.companion === targetCompanion) {
-        companionLosses++;
-      }
-      if (record.fruit === targetFruit) {
-        fruitLosses++;
-      }
-    }
-  }
-
-  const total = records.length;
-  const valueCounts = countPossibleValues(records);
-  const winPrior = (wins + 1) / (total + 2);
-  const lossPrior = (losses + 1) / (total + 2);
-
-  const winScore =
-    winPrior *
-    conditionalProbability(suitWins, wins, valueCounts.suitCount) *
-    conditionalProbability(companionWins, wins, valueCounts.companionCount) *
-    conditionalProbability(fruitWins, wins, valueCounts.fruitCount);
-
-  const lossScore =
-    lossPrior *
-    conditionalProbability(suitLosses, losses, valueCounts.suitCount) *
-    conditionalProbability(companionLosses, losses, valueCounts.companionCount) *
-    conditionalProbability(fruitLosses, losses, valueCounts.fruitCount);
-
-  const percentage = (winScore / (winScore + lossScore)) * 100;
-  return `${percentage.toFixed(1)}%`;
+  const percentage = ((suitRate + companionRate + fruitRate) / 3) * 100;
+  return Number(percentage.toFixed(1));
 }
 
 if (require.main === module) {
