@@ -13,10 +13,6 @@ function valideEmail(mail) {
     }
   }
 
-  if ( mail === null) {
-    return false;
-  }
-
   const parts = mail.split('@');
 
   if (parts.length !== 2) {
